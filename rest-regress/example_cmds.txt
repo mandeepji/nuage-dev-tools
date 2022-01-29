@@ -1,0 +1,45 @@
+#############################################################################
+Execute below commands, in same order, to create 2000 NSG, 2000 UBR, 2000 BR
+     with 4 ports in each & permissions for a specific enterprise
+
+Assumption: 
+  1. Enterprise is created = ENTERPRISE_ID
+  2. Replace {{...}} with actual IDs (mostly UUID of previous commands)
+
+TODO: Convert above assumtions to similar commands, 
+      so just executing all commands will create setup
+
+#############################################################################
+# Add infra-profile under csp enterprise
+./runRestRegression.py -l DEBUG -e "infrastructuregatewayprofile" -n 1 -t '{ "name": "nsg-infra-profile", "proxyDNSName": "nsg.infra.profile.com" }'
+
+# Add NSG templates under csp enterprise
+./runRestRegression.py -l DEBUG -e "nsgatewaytemplate" -n 1 -t '{ "name": "nsg-template", "personality": "NSG", "infrastructureProfileID": "{{NSG_INFRA_PROFILE_ID}}" }'
+
+# Add NSG-BR templates under csp enterprise
+./runRestRegression.py -l DEBUG -e "nsgatewaytemplate" -n 1 -t '{ "name": "nsg-br-template", "personality": "NSGBR", "infrastructureProfileID": "{{NSG_INFRA_PROFILE_ID}}" }'
+
+# Add NSG-UBR templates under csp enterprise
+./runRestRegression.py -l DEBUG -e "nsgatewaytemplate" -n 1 -t '{ "name": "nsg-ubr-template", "personality": "NSGDUC", "infrastructureProfileID": "{{NSG_INFRA_PROFILE_ID}}" }'
+
+# Add NSGs under enterprise
+./runRestRegression.py -l DEBUG -e "nsgateway" -n 2000 --ptype "enterprise" --pid "{{ENTERPRISE_ID}}" -t '{ "name": "auto-nsg-$i", "templateID": "{{NSG_TEMPLATE_ID}}", "personality": "NSG" }'
+
+# Add NSG-BRs under csp enterprise
+./runRestRegression.py -l DEBUG -e "nsgateway" -n 2000 -t '{ "name": "auto-ubr-$i", "templateID": "{{NSGBR_TEMPLATE_ID}}", "personality": "NSGBR" }'
+
+# Add NSG-UBRs or NSG-UBRs under csp enterprise
+./runRestRegression.py -l DEBUG -e "nsgateway" -n 2000 -t '{ "name": "auto-ubr-$i", "templateID": "{{NSGDUC_TEMPLATE_ID}}", "personality": "NSGDUC" }'
+
+# Add permissions for each NSG-BR & NSG-UBR
+./runRestRegression.py -l DEBUG -e "enterprisepermission" -n 1 --ptype "nsgateway" -f 'personality == NSGBR OR personality == NSGDUC' -t '{ "permittedAction": "USE", "permittedEntityID": "{{ENTERPRISE_ID}}" }'
+
+# Add 2 access ports for each NSG, NSG-BR & NSG-UBR
+./runRestRegression.py -l DEBUG -e "nsport" -n 1 --ptype "nsgateway" -t '{ "name": "auto-access-port-1", "physicalName": "port1", "portType": "ACCESS" }'
+./runRestRegression.py -l DEBUG -e "nsport" -n 1 --ptype "nsgateway" -t '{ "name": "auto-access-port-2", "physicalName": "port2", "portType": "ACCESS" }'
+
+# Add 2 network ports for each NSG, NSG-BR & NSG-UBR
+./runRestRegression.py -l DEBUG -e "nsport" -n 1 --ptype "nsgateway" -t '{ "name": "auto-network-port-1", "physicalName": "port3", "portType": "NETWORK" }'
+./runRestRegression.py -l DEBUG -e "nsport" -n 1 --ptype "nsgateway" -t '{ "name": "auto-network-port-2", "physicalName": "port4", "portType": "NETWORK" }'
+
+

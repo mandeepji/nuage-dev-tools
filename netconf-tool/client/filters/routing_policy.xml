@@ -1,0 +1,4 @@
+<configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
+  <policy-options>
+  </policy-options>
+</configure>

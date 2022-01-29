@@ -1,0 +1,901 @@
+{
+	"info": {
+		"_postman_id": "886d24ff-d432-4c4d-81fb-0d9ac4545dea",
+		"name": "vsd-portal-setup",
+		"description": "Creates 4 nsg in two enterprises\nCreates 4 nsg-br and 4 nsg-ubr in csp enterprise\nAdds (permissions) 2-2 nsg-br and 2-2 nsg-ubr to each enterprise\n",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "00-get-variables",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "a2afd131-6921-4203-a779-a9f0accf0a5c",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody)[0];",
+							"var csp = jsonData.enterpriseID;",
+							"",
+							"var CryptoJS = require(\"crypto-js\")",
+							"",
+							"//Encrypt",
+							"var rawStr = CryptoJS.enc.Utf8.parse('csproot:' + jsonData.APIKey)",
+							"var base64 = CryptoJS.enc.Base64.stringify(rawStr)",
+							"",
+							"console.log(`Encrypted value: ${base64}`)",
+							"",
+							"",
+							"postman.setEnvironmentVariable(\"CSP_ENTERPRISE\", csp);",
+							"postman.setEnvironmentVariable(\"AUTH_VALUE\", 'XREST ' + base64);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "csproot",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "csproot",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL_API}}/me",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "01-get-shared-profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "a2afd131-6921-4203-a779-a9f0accf0a5c",
+						"exec": [
+							"var profiles = JSON.parse(responseBody);",
+							"",
+							"for (var i = 0; i < profiles.length; i++)",
+							"{",
+							"  if (profiles[i].name == 'Shared Infrastructure Enterprise Profile')",
+							"  {",
+							"    postman.setEnvironmentVariable(\"SHARED_ORG_PROFILE\", profiles[i].ID);",
+							"  }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{AUTH_VALUE}}"
+					}
+				],
+				"url": {
+					"raw": "{{URL_API}}/enterpriseprofiles",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"enterpriseprofiles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "02-create-nuage-enterprises",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							"//var jsonData = JSON.parse(responseBody)[0];",
+							"//var enterpriseID = jsonData.ID;",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"var ent1ID = jsonData.response[0].data.ID;",
+							"postman.setEnvironmentVariable(\"NUAGE_ENTERPRISE\", ent1ID)",
+							"",
+							"var ent2ID = jsonData.response[1].data.ID;",
+							"postman.setEnvironmentVariable(\"NUAGE2_ENTERPRISE\", ent2ID)",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "[{\n\t\"enterpriseProfileID\" : \"{{SHARED_ORG_PROFILE}}\",\n\t\"localAS\" : 101,\n\t\"name\" : \"Nuage 1\"\n},\n{\n\t\"enterpriseProfileID\" : \"{{SHARED_ORG_PROFILE}}\",\n\t\"localAS\" : 102,\n\t\"name\" : \"Nuage 2\"\n}]"
+				},
+				"url": {
+					"raw": "{{URL_API}}/enterprises",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"enterprises"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "03-create-nsg-infra-profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "183909a4-2578-4752-bfcd-a32a1cda0a37",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody)[0];",
+							"",
+							"postman.setEnvironmentVariable(\"NSG_INFRA_PROFILE_ID\", jsonData.ID);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"name\": \"nsg-infra-profile\",\n\t\"proxyDNSName\": \"nsg.infra.profile.com\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/infrastructuregatewayprofiles",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"infrastructuregatewayprofiles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "04-create-nsg-template",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "183909a4-2578-4752-bfcd-a32a1cda0a37",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"var tem1ID = jsonData.response[0].data.ID;",
+							"postman.setEnvironmentVariable(\"NSG_TEMPLATE_ID\", tem1ID)",
+							"",
+							"var tem2ID = jsonData.response[1].data.ID;",
+							"postman.setEnvironmentVariable(\"NSGBR_TEMPLATE_ID\", tem2ID)",
+							"",
+							"var tem3ID = jsonData.response[2].data.ID;",
+							"postman.setEnvironmentVariable(\"NSGDUC_TEMPLATE_ID\", tem3ID)",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "[{\n\t\"name\": \"nsg-template\",\n\t\"personality\": \"NSG\",\n\t\"infrastructureProfileID\": \"{{NSG_INFRA_PROFILE_ID}}\"\n},\n{\n\t\"name\": \"nsg-br-template\",\n\t\"personality\": \"NSGBR\",\n\t\"infrastructureProfileID\": \"{{NSG_INFRA_PROFILE_ID}}\"\n},\n{\n\t\"name\": \"nsg-ubr-template\",\n\t\"personality\": \"NSGDUC\",\n\t\"infrastructureProfileID\": \"{{NSG_INFRA_PROFILE_ID}}\"\n}]"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgatewaytemplates",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgatewaytemplates"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "05-create-nuage1-nsgs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							"  var jsonData = JSON.parse(responseBody);",
+							"  var nsg1ID = jsonData.response[0].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE1_NSG1\", nsg1ID)",
+							"",
+							"  var nsg2ID = jsonData.response[1].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE1_NSG2\", nsg2ID)",
+							"",
+							"  var nsg3ID = jsonData.response[2].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE1_NSG3\", nsg3ID)",
+							"",
+							"  var nsg4ID = jsonData.response[3].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE1_NSG4\", nsg4ID)",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "[{\n\t\"name\": \"auto-nsg-1\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n},\n{\n\t\"name\": \"auto-nsg-2\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n},\n{\n\t\"name\": \"auto-nsg-3\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n},\n{\n\t\"name\": \"auto-nsg-4\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n}]\n"
+				},
+				"url": {
+					"raw": "{{URL_API}}/enterprises/{{NUAGE_ENTERPRISE}}/nsgateways",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"enterprises",
+						"{{NUAGE_ENTERPRISE}}",
+						"nsgateways"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "06-create-nuage2-nsgs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							"  var jsonData = JSON.parse(responseBody);",
+							"  var nsg1ID = jsonData.response[0].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE2_NSG1\", nsg1ID)",
+							"",
+							"  var nsg2ID = jsonData.response[1].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE2_NSG2\", nsg2ID)",
+							"",
+							"  var nsg3ID = jsonData.response[2].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE2_NSG3\", nsg3ID)",
+							"",
+							"  var nsg4ID = jsonData.response[3].data.ID;",
+							"  postman.setEnvironmentVariable(\"NUAGE2_NSG4\", nsg4ID)",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "[{\n\t\"name\": \"auto-nsg-1\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n},\n{\n\t\"name\": \"auto-nsg-2\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n},\n{\n\t\"name\": \"auto-nsg-3\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n},\n{\n\t\"name\": \"auto-nsg-4\",\n\t\"templateID\": \"{{NSG_TEMPLATE_ID}}\",\n\t\"personality\": \"NSG\"\n}]\n"
+				},
+				"url": {
+					"raw": "{{URL_API}}/enterprises/{{NUAGE2_ENTERPRISE}}/nsgateways",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"enterprises",
+						"{{NUAGE2_ENTERPRISE}}",
+						"nsgateways"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "07-create-csp-nsgs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							"  var jsonData = JSON.parse(responseBody);",
+							"",
+							"  var nsgbr1ID = jsonData.response[0].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGBR1\", nsgbr1ID)",
+							"",
+							"  var nsgbr2ID = jsonData.response[1].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGBR2\", nsgbr2ID)",
+							"",
+							"  var nsgbr3ID = jsonData.response[2].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGBR3\", nsgbr3ID)",
+							"",
+							"  var nsgbr4ID = jsonData.response[3].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGBR4\", nsgbr4ID)",
+							"",
+							"  var nsgubr1ID = jsonData.response[4].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGDUC1\", nsgubr1ID)",
+							"",
+							"  var nsgubr2ID = jsonData.response[5].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGDUC2\", nsgubr2ID)",
+							"",
+							"  var nsgubr3ID = jsonData.response[6].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGDUC3\", nsgubr3ID)",
+							"",
+							"  var nsgubr4ID = jsonData.response[7].data.ID;",
+							"  postman.setEnvironmentVariable(\"NSGDUC4\", nsgubr4ID)",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "[{\n\t\"name\": \"auto-br-1\",\n\t\"templateID\": \"{{NSGBR_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGBR\"\n},\n{\n\t\"name\": \"auto-br-2\",\n\t\"templateID\": \"{{NSGBR_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGBR\"\n},\n{\n\t\"name\": \"auto-br-3\",\n\t\"templateID\": \"{{NSGBR_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGBR\"\n},\n{\n\t\"name\": \"auto-br-4\",\n\t\"templateID\": \"{{NSGBR_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGBR\"\n},\n{\n\t\"name\": \"auto-ubr-1\",\n\t\"templateID\": \"{{NSGDUC_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGDUC\"\n},\n{\n\t\"name\": \"auto-ubr-2\",\n\t\"templateID\": \"{{NSGDUC_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGDUC\"\n},\n{\n\t\"name\": \"auto-ubr-3\",\n\t\"templateID\": \"{{NSGDUC_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGDUC\"\n},\n{\n\t\"name\": \"auto-ubr-4\",\n\t\"templateID\": \"{{NSGDUC_TEMPLATE_ID}}\",\n\t\"personality\": \"NSGDUC\"\n}]"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "08-create-nuage1-br1-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGBR1}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGBR1}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "09-create-nuage1-br2-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGBR2}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGBR2}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "10-create-nuage1-ubr1-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGDUC1}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGDUC1}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "11-create-nuage1-ubr2-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGDUC2}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGDUC2}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "12-create-nuage2-br3-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE2_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGBR3}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGBR3}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "13-create-nuage2-br4-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE2_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGBR4}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGBR4}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "14-create-nuage2-ubr3-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE2_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGDUC3}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGDUC3}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "15-create-nuage2-ubr4-permission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f87de302-dbf5-4b46-a13c-99827259512b",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Nuage-Organization",
+						"value": "csp"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{AUTH_VALUE}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"permittedAction\": \"USE\",\n\t\"permittedEntityID\": \"{{NUAGE2_ENTERPRISE}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL_API}}/nsgateways/{{NSGDUC4}}/enterprisepermissions",
+					"host": [
+						"{{URL_API}}"
+					],
+					"path": [
+						"nsgateways",
+						"{{NSGDUC4}}",
+						"enterprisepermissions"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "06f9d181-28cb-4b61-833f-1c0839411161",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "844b068e-3ee7-40bb-b539-d3c82df109c4",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "c3995f99-d274-45c1-9963-80ce8d59fe94",
+			"key": "AUTH_VALUE",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"id": "d12fbeee-a1ff-4efc-9bf8-ff82e6a17eca",
+			"key": "NUAGE_ENTERPRISE",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"protocolProfileBehavior": {}
+}

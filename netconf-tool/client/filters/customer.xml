@@ -1,0 +1,6 @@
+<configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
+  <service>
+    <customer>
+    </customer>
+  </service>
+</configure>

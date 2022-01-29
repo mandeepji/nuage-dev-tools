@@ -1,0 +1,7 @@
+<configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
+  <service>
+    <vpls>
+      <service-name>$servicename</service-name>
+    </vpls>
+  </service>
+</configure>
